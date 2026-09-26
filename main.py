@@ -81,6 +81,7 @@ def fetch\_unread\_emails() -&gt; list:
 #    messages = []
 #    try:
 #        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+        print(f"Attempting login for '{GMAIL_ADDRESS}' with password length: {len(GMAIL_APP_PASSWORD or '')}")
 #        mail.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
 #        mail.select("inbox")
 
