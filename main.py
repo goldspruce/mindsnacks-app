@@ -12,9 +12,11 @@ import pytz
 from google import genai
 
 # Configuration
-GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS", "rhlee.personal@gmail.com")
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
+#GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS", "rhlee.personal@gmail.com")
+#GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS", "rhlee.personal@gmail.com").strip()
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
 STATE_FILE = "state.json"
 
 # Default podcasts to pull content from
@@ -59,16 +61,28 @@ def send_email(to_email: str, subject: str, body_text: str):
         server.send_message(msg)
     print(f"Successfully sent email to {to_email}")
 
-def fetch_unread_emails() -> list:
-    if not GMAIL_APP_PASSWORD:
-        print("GMAIL_APP_PASSWORD not set. Skipping inbox fetch.")
-        return []
+def fetch\_unread\_emails() -&gt; list:
+    if not GMAIL\_APP\_PASSWORD: print("GMAIL_APP_PASSWORD is empty or not set. Skipping inbox fetch.")
+    return []
 
     messages = []
     try:
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        mail.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-        mail.select("inbox")
+        clean_user = GMAIL_ADDRESS.strip()
+        clean_pass = GMAIL_APP_PASSWORD.replace(" ", "").strip()
+        print(f"Logging into Gmail as {clean_user} (Password length: {len(clean_pass)} chars)...")
+        mail.login(clean_user, clean_pass)
+        
+#def fetch_unread_emails() -> list:
+#    if not GMAIL_APP_PASSWORD:
+#        print("GMAIL_APP_PASSWORD not set. Skipping inbox fetch.")
+#        return []
+#
+#    messages = []
+#    try:
+#        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+#        mail.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+#        mail.select("inbox")
 
         status, response = mail.search(None, 'UNSEEN')
         email_ids = response[0].split()
