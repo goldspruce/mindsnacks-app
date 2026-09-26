@@ -176,10 +176,16 @@ def main():
     unread_emails = fetch_unread_emails()
     for email_msg in unread_emails:
         sender = email_msg["sender"]
+        subject = email_msg["subject"]
         body = email_msg["body"]
 
         # Ignore emails sent by the app itself
         if sender == GMAIL_ADDRESS.lower():
+            continue
+
+        # Filter: Only process emails where the subject line contains "mindsnack" or "mindsnacks" (case-insensitive)
+        if "mindsnack" not in subject.lower():
+            print(f"Skipping email from {sender} — subject '{subject}' does not contain 'mindsnack'")
             continue
 
         if sender not in users:
