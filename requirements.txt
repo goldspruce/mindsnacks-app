@@ -1,1 +1,3 @@
-google-genai feedparser pytz
+google-genai
+feedparser
+pytz
