@@ -80,14 +80,25 @@ def fetch_unread_emails() -> list:
             mail.logout()
             return []
 
-        search_status, response = mail.search(None, 'UNSEEN')
+        # IMAP search specifically for UNSEEN emails with "mindsnack" in the subject
+        # This prevents scanning through 1,000s of unrelated unread emails
+        search_status, response = mail.search(None, 'UNSEEN', 'SUBJECT', 'mindsnack')
         if search_status != 'OK':
             print(f"Failed to search INBOX. Status: {search_status}")
             mail.logout()
             return []
 
         email_ids = response[0].split()
-        print(f"Found {len(email_ids)} unread email(s).")
+
+        # If no emails found with 'mindsnack', also check for 'mindsnacks'
+        if not email_ids:
+            search_status_plural, response_plural = mail.search(None, 'UNSEEN', 'SUBJECT', 'mindsnacks')
+            if search_status_plural == 'OK':
+                email_ids = response_plural[0].split()
+
+        # Take only the 10 most recent matching unread emails
+        email_ids = email_ids[-100:]
+        print(f"Found {len(email_ids)} matching MindSnack unread email(s).")
 
         for e_id in email_ids:
             _, msg_data = mail.fetch(e_id, '(RFC822)')
