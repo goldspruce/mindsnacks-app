@@ -28,7 +28,8 @@ FALLBACK_AI_UNAVAILABLE_MESSAGE = (
 DEFAULT_PODCASTS = [
     {"name": "Hidden Brain", "rss": "https://feeds.simplecast.com/829z8U31"},
     {"name": "Solved with Mark Manson", "rss": "https://feeds.buzzsprout.com/2192131.rss"},
-    {"name": "Perform with Andy Galpin", "rss": "https://feeds.megaphone.fm/perform"}
+    {"name": "Perform with Andy Galpin", "rss": "https://feeds.megaphone.fm/perform"},
+    {"name": "Huberman Lab", "rss": "https://feeds.megaphone.fm/hubermanlab"}
 ]
 
 # Initialize Gemini Client
@@ -189,12 +190,15 @@ def generate_welcome_and_first_mindsnack(user_prompt: str) -> str:
     Task:
     Write an email response that:
     1. Warmly thanks them for signing up and explains that we are replying immediately with their first MindSnack, and future ones will arrive about once a week.
-    2. Delivers their very first MindSnack: Pick a SPECIFIC podcast episode from the context above (name the podcast and episode title!), share a concrete psychological, neuroscience, or wellness insight from it, and provide an actionable health nudge (e.g. 2-minute workout snack, stretch, hydration, or mindfulness).
+    2. Delivers their very first MindSnack:
+       - Check the user's prompt carefully for any specific podcasts, authors, or topics they requested (e.g., Hidden Brain, Solved, Huberman Lab, Perform, neuroscience, psychology, etc.).
+       - If they requested a podcast or topic present in the RSS feed context above, prioritize selecting an episode from that feed.
+       - FALLBACK RULE: If the user requested a podcast, news source, book, or topic NOT present in the RSS feed context above, draw upon your broad general knowledge of that requested show/subject to deliver a relevant, accurate insight and health nudge.
+       - Name the podcast or topic explicitly, share a concrete psychological, neuroscience, or wellness insight from it, and provide an actionable health nudge (e.g., 2-minute movement snack, stretch, hydration, or mindfulness exercise).
     3. Mentions that replying to this email keeps the AI conversation going and qualifies them for this month's physical MailTreat reward!
 
     Strict rules:
     - Do NOT repeat or echo exact phrases, greetings, or sign-offs from the user's message.
-    - Use the user's message ONLY to infer their general interests.
     - Keep tone warm, concise, and engaging. Do not use bold markdown formatting.
     """
     return generate_content_with_fallback(prompt)
@@ -210,8 +214,10 @@ def generate_reply_conversation(user_message: str, user_prompt: str) -> str:
 
     Task:
     Respond thoughtfully to the user's latest message as Gemini AI.
-    1. Provide an engaging follow-up insight or health tip based on what they said or drawing from the podcast context.
-    2. Include a brief, actionable wellness nudge.
+    1. Check what podcasts or topics the user requested in their starting preferences or latest message.
+    2. If their preferred podcast/topic is in the podcast RSS context above, draw from that context.
+    3. FALLBACK RULE: If they asked about a show, news source, or topic NOT present in the RSS context above, draw from your broad general knowledge to answer thoughtfully and accurately.
+    4. Provide an engaging follow-up insight or health tip based on what they said and an actionable wellness nudge.
 
     Strict rules:
     - Do NOT repeat or echo exact phrases, sentence structures, or sign-offs from the user's previous emails or prompt.
@@ -229,8 +235,9 @@ def generate_weekly_mindsnack(user_prompt: str) -> str:
 
     Task:
     Write a fresh weekly MindSnack email. Include:
-    1. An interesting psychology, neuroscience, or wellness tidbit from one of the podcasts in the context.
-    2. A quick, actionable health nudge for today.
+    1. Check user preferences and pick an episode from their preferred podcasts in the context. If their preferred topic/show is not in the context, draw from your broad general knowledge of their requested topics.
+    2. An interesting psychology, neuroscience, or wellness tidbit based on that topic/show.
+    3. A quick, actionable health nudge for today.
     
     Strict rules:
     - Keep sign-offs fresh and avoid repetitive canned phrases.
