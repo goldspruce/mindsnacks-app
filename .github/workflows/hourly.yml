@@ -1,5 +1,5 @@
 name: Hourly MindSnacks Processor
-#
+
 on:
   schedule:
     - cron: '0 * * * *'
