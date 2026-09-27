@@ -17,8 +17,14 @@ GMAIL_APP_PASSWORD = (os.environ.get("GMAIL_APP_PASSWORD") or "").strip()
 GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 STATE_FILE = "state.json"
 
-# Preferred lightweight & fast Gemini model to avoid capacity/demand bottlenecks
+# Preferred lightweight & fast Gemini model
 MODEL_NAME = "gemini-2.0-flash"
+
+# Fallback message when AI models are temporarily unavailable
+FALLBACK_AI_UNAVAILABLE_MESSAGE = (
+    "AI unavailable at the moment, if you would like us to try again, "
+    "please reply to this email and keep your original content at the bottom."
+)
 
 # Default podcasts to pull content from
 DEFAULT_PODCASTS = [
@@ -134,15 +140,30 @@ def fetch_unread_emails() -> list:
 # Gemini AI Generation Logic
 # -------------------------------------------------------------------
 def generate_content_with_fallback(prompt: str) -> str:
-    """Helper to generate content with fallback models if capacity is temporarily constrained."""
-    models_to_try = [MODEL_NAME, "gemini-1.5-flash", "gemini-2.0-flash-lite"]
+    """Helper to generate content with fallback models. If all AI models fail or are unavailable,
+    returns a polite fallback message prompting the user to reply to try again."""
+    if not ai_client:
+        print("Gemini AI client not initialized. Returning fallback message.")
+        return FALLBACK_AI_UNAVAILABLE_MESSAGE
+
+    models_to_try = [MODEL_NAME, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite"]
+    seen = set()
+    unique_models = []
     for m in models_to_try:
+        if m not in seen:
+            seen.add(m)
+            unique_models.append(m)
+
+    for m in unique_models:
         try:
             response = ai_client.models.generate_content(model=m, contents=prompt)
-            return response.text.strip()
+            if response and response.text:
+                return response.text.strip()
         except Exception as e:
             print(f"Model {m} encountered error: {e}. Trying fallback if available...")
-    raise RuntimeError("All configured Gemini models failed or were unavailable.")
+
+    print("All Gemini AI models failed or were unavailable. Returning fallback message.")
+    return FALLBACK_AI_UNAVAILABLE_MESSAGE
 
 def fetch_podcast_context() -> str:
     snippets = []
