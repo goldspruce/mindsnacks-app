@@ -17,8 +17,8 @@ GMAIL_APP_PASSWORD = (os.environ.get("GMAIL_APP_PASSWORD") or "").strip()
 GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 STATE_FILE = "state.json"
 
-# Preferred lightweight & fast Gemini model
-MODEL_NAME = "gemini-2.0-flash"
+# Preferred Gemini models
+MODEL_NAME = "gemini-3.8-flash"
 
 # Fallback message when AI models are temporarily unavailable
 FALLBACK_AI_UNAVAILABLE_MESSAGE = (
@@ -146,7 +146,7 @@ def generate_content_with_fallback(prompt: str) -> str:
         print("Gemini AI client not initialized. Returning fallback message.")
         return FALLBACK_AI_UNAVAILABLE_MESSAGE
 
-    models_to_try = [MODEL_NAME, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite"]
+    models_to_try = ["gemini-3.8-flash", "gemini-3.5-flash-lite"]
     seen = set()
     unique_models = []
     for m in models_to_try:
