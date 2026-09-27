@@ -18,9 +18,6 @@ GMAIL_APP_PASSWORD = (os.environ.get("GMAIL_APP_PASSWORD") or "").strip()
 GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 STATE_FILE = "state.json"
 
-# Preferred Gemini models in order of attempt
-MODELS_TO_TRY = ["gemini-3.8-flash", "gemini-3.5-flash-lite"]
-
 # Fallback message when AI models are temporarily unavailable
 FALLBACK_AI_UNAVAILABLE_MESSAGE = (
     "AI unavailable at the moment, if you would like us to try again, "
@@ -105,8 +102,8 @@ def fetch_unread_emails() -> list:
             if search_status_plural == 'OK':
                 email_ids = response_plural[0].split()
 
-        # Take only the 50 most recent matching unread emails
-        email_ids = email_ids[-50:]
+        # Take only the 10 most recent matching unread emails
+        email_ids = email_ids[-10:]
         print(f"Found {len(email_ids)} matching MindSnack unread email(s).")
 
         for e_id in email_ids:
@@ -138,8 +135,29 @@ def fetch_unread_emails() -> list:
     return messages
 
 # -------------------------------------------------------------------
-# Gemini AI Generation Logic
+# Gemini AI Generation Logic & Context Helpers
 # -------------------------------------------------------------------
+def clean_html(raw_html: str) -> str:
+    clean = re.sub(r'<[^>]+>', '', raw_html)
+    return " ".join(clean.split())
+
+def fetch_podcast_context() -> str:
+    snippets = []
+    for pod in DEFAULT_PODCASTS:
+        try:
+            feed = feedparser.parse(pod["rss"])
+            if feed.entries:
+                for entry in feed.entries[:2]:
+                    clean_summary = clean_html(entry.get("summary", ""))[:800]
+                    snippets.append(
+                        f"Podcast: {pod['name']}\n"
+                        f"Episode: {entry.get('title', 'Latest Episode')}\n"
+                        f"Summary: {clean_summary}"
+                    )
+        except Exception as e:
+            print(f"Error reading feed {pod['name']}: {e}")
+    return "\n\n---\n\n".join(snippets)
+
 def generate_content_with_fallback(prompt: str) -> str:
     """Helper to generate content with fallback models. If all AI models fail or are unavailable,
     returns a polite fallback message prompting the user to reply to try again."""
@@ -147,7 +165,8 @@ def generate_content_with_fallback(prompt: str) -> str:
         print("Gemini AI client not initialized. Returning fallback message.")
         return FALLBACK_AI_UNAVAILABLE_MESSAGE
 
-    for m in MODELS_TO_TRY:
+    models_to_try = ["gemini-3.8-flash", "gemini-3.5-flash-lite"]
+    for m in models_to_try:
         try:
             response = ai_client.models.generate_content(model=m, contents=prompt)
             if response and response.text:
@@ -158,94 +177,73 @@ def generate_content_with_fallback(prompt: str) -> str:
     print("All Gemini AI models failed or were unavailable. Returning fallback message.")
     return FALLBACK_AI_UNAVAILABLE_MESSAGE
 
-def clean_html(raw_html: str) -> str:
-    """Strips HTML tags and compresses whitespace from RSS feed text."""
-    clean_text = re.sub(r'<[^>]+>', ' ', raw_html)
-    return ' '.join(clean_text.split())
-
-def fetch_podcast_context() -> str:
-    snippets = []
-    for pod in DEFAULT_PODCASTS:
-        try:
-            feed = feedparser.parse(pod["rss"])
-            if feed.entries:
-                # Grab the 2 most recent episodes for richer depth
-                for entry in feed.entries[:2]:
-                    title = getattr(entry, 'title', 'Untitled Episode')
-                    summary_raw = getattr(entry, 'summary', getattr(entry, 'description', ''))
-                    clean_sum = clean_html(summary_raw)[:800]
-                    snippets.append(
-                        f"Podcast: {pod['name']}\n"
-                        f"Episode: {title}\n"
-                        f"Summary: {clean_sum}"
-                    )
-        except Exception as e:
-            print(f"Error reading feed {pod['name']}: {e}")
-    return "\n\n---\n\n".join(snippets)
-
 def generate_welcome_and_first_mindsnack(user_prompt: str) -> str:
     context = fetch_podcast_context()
     prompt = f"""
-    You are writing the welcome email for MindSnacks & MailTreats.
-    User's signup prompt / interests:
+    The user just signed up for MindSnacks & MailTreats with this prompt/preferences:
     "{user_prompt}"
 
-    Latest Podcast Context (Real Episode Data from Hidden Brain, Solved, Perform):
+    Podcast feed updates context:
     {context}
 
-    CRITICAL INSTRUCTION:
-    You MUST directly dig into and feature specific ideas from the Podcast Context above.
-    Do NOT give a generic high-level summary or restate the user's preferences back to them.
+    Task:
+    Write an email response that:
+    1. Warmly thanks them for signing up and explains that we are replying immediately with their first MindSnack, and future ones will arrive about once a week.
+    2. Delivers their very first MindSnack: Pick a SPECIFIC podcast episode from the context above (name the podcast and episode title!), share a concrete psychological, neuroscience, or wellness insight from it, and provide an actionable health nudge (e.g. 2-minute workout snack, stretch, hydration, or mindfulness).
+    3. Mentions that replying to this email keeps the AI conversation going and qualifies them for this month's physical MailTreat reward!
 
-    Email Structure:
-    1. Warm Welcome: 1-2 friendly sentences thanking them for joining.
-    2. MindSnack Deep Dive: Pick AT LEAST ONE specific podcast and episode title from the Podcast Context above. Extract a specific, concrete psychological insight, neuroscience finding, or health concept from that episode. Explain the concept clearly in 2-3 sentences.
-    3. Actionable Health Nudge: Give them 1 specific, immediate 2-minute action (e.g., a specific breathing exercise, a quick posture reset, walking away from screens for a 3-minute stretch, or a hydration prompt).
-    4. MailTreat Call-to-Action: Remind them that replying to this email keeps the AI conversation going and qualifies them for this month's physical MailTreat reward!
-
-    Tone & Formatting Constraints:
-    - Friendly, engaging, and clear.
-    - Do NOT use bold markdown formatting (no **text**).
+    Strict rules:
+    - Do NOT repeat or echo exact phrases, greetings, or sign-offs from the user's message.
+    - Use the user's message ONLY to infer their general interests.
+    - Keep tone warm, concise, and engaging. Do not use bold markdown formatting.
     """
     return generate_content_with_fallback(prompt)
 
 def generate_reply_conversation(user_message: str, user_prompt: str) -> str:
     context = fetch_podcast_context()
     prompt = f"""
-    You are continuing an ongoing MindSnacks conversation with a user.
     User starting preferences: "{user_prompt}"
-    User latest email reply: "{user_message}"
+    User latest reply message: "{user_message}"
 
-    Podcast Context:
+    Podcast updates context:
     {context}
 
     Task:
-    Respond thoughtfully and conversationally. Reference a concrete idea from the podcasts (Hidden Brain, Solved, or Perform) or build directly on the user's message with a specific psychology/wellness takeaway and an actionable health nudge (rest, walk, stretch, or mind break).
+    Respond thoughtfully to the user's latest message as Gemini AI.
+    1. Provide an engaging follow-up insight or health tip based on what they said or drawing from the podcast context.
+    2. Include a brief, actionable wellness nudge.
 
-    Constraints:
-    - Conversational, brief, and supportive.
-    - Do NOT use bold markdown formatting.
+    Strict rules:
+    - Do NOT repeat or echo exact phrases, sentence structures, or sign-offs from the user's previous emails or prompt.
+    - Keep sign-offs fresh, natural, and unique to this specific message.
+    - Keep tone conversational, supportive, and concise. Do not use bold markdown formatting.
     """
     return generate_content_with_fallback(prompt)
 
 def generate_weekly_mindsnack(user_prompt: str) -> str:
     context = fetch_podcast_context()
     prompt = f"""
-    Write a fresh weekly MindSnack email.
-    User interests: "{user_prompt}"
-
-    Podcast Context:
+    User prompt/interests: "{user_prompt}"
+    Podcast updates:
     {context}
 
     Task:
-    1. Feature a specific episode and key takeaway from the Podcast Context (Hidden Brain, Solved with Mark Manson, or Perform with Andy Galpin).
-    2. Provide a quick, actionable health/wellness nudge for today (rest, walk, hydration, or movement).
-
-    Constraints:
-    - Concise and ready for email dispatch.
-    - Do NOT use bold markdown formatting.
+    Write a fresh weekly MindSnack email. Include:
+    1. An interesting psychology, neuroscience, or wellness tidbit from one of the podcasts in the context.
+    2. A quick, actionable health nudge for today.
+    
+    Strict rules:
+    - Keep sign-offs fresh and avoid repetitive canned phrases.
+    - Do not use bold markdown formatting.
     """
     return generate_content_with_fallback(prompt)
+
+def format_email_with_quoted_original(response_text: str, original_message: str) -> str:
+    """Appends the original incoming user email at the bottom of the response."""
+    if not original_message.strip():
+        return response_text
+    
+    return f"{response_text}\n\n----------------------------------------\nOriginal Message:\n{original_message}"
 
 # -------------------------------------------------------------------
 # Main Workflow Execution
@@ -268,11 +266,12 @@ def main():
         if sender not in users:
             # NEW USER SIGNUP
             print(f"New user signup from: {sender}")
-            welcome_msg = generate_welcome_and_first_mindsnack(body)
+            ai_reply = generate_welcome_and_first_mindsnack(body)
+            full_email_body = format_email_with_quoted_original(ai_reply, body)
             send_email(
                 to_email=sender,
                 subject="Welcome to MindSnacks & MailTreats! Here is your 1st MindSnack",
-                body_text=welcome_msg
+                body_text=full_email_body
             )
             users[sender] = {
                 "raw_prompt": body,
@@ -283,11 +282,12 @@ def main():
         else:
             # EXISTING USER REPLY
             print(f"Received conversation reply from: {sender}")
-            reply_msg = generate_reply_conversation(body, users[sender]["raw_prompt"])
+            ai_reply = generate_reply_conversation(body, users[sender]["raw_prompt"])
+            full_email_body = format_email_with_quoted_original(ai_reply, body)
             send_email(
                 to_email=sender,
                 subject="Re: Your MindSnack Conversation",
-                body_text=reply_msg
+                body_text=full_email_body
             )
             users[sender]["replied_this_month"] = True
 
