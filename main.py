@@ -17,6 +17,9 @@ GMAIL_APP_PASSWORD = (os.environ.get("GMAIL_APP_PASSWORD") or "").strip()
 GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 STATE_FILE = "state.json"
 
+# Preferred lightweight & fast Gemini model to avoid capacity/demand bottlenecks
+MODEL_NAME = "gemini-2.0-flash"
+
 # Default podcasts to pull content from
 DEFAULT_PODCASTS = [
     {"name": "Hidden Brain", "rss": "https://feeds.simplecast.com/829z8U31"},
@@ -81,7 +84,6 @@ def fetch_unread_emails() -> list:
             return []
 
         # IMAP search specifically for UNSEEN emails with "mindsnack" in the subject
-        # This prevents scanning through 1,000s of unrelated unread emails
         search_status, response = mail.search(None, 'UNSEEN', 'SUBJECT', 'mindsnack')
         if search_status != 'OK':
             print(f"Failed to search INBOX. Status: {search_status}")
@@ -96,7 +98,7 @@ def fetch_unread_emails() -> list:
             if search_status_plural == 'OK':
                 email_ids = response_plural[0].split()
 
-        # Take only the 10 most recent matching unread emails
+        # Take only the 100 most recent matching unread emails
         email_ids = email_ids[-100:]
         print(f"Found {len(email_ids)} matching MindSnack unread email(s).")
 
@@ -131,6 +133,17 @@ def fetch_unread_emails() -> list:
 # -------------------------------------------------------------------
 # Gemini AI Generation Logic
 # -------------------------------------------------------------------
+def generate_content_with_fallback(prompt: str) -> str:
+    """Helper to generate content with fallback models if capacity is temporarily constrained."""
+    models_to_try = [MODEL_NAME, "gemini-1.5-flash", "gemini-2.0-flash-lite"]
+    for m in models_to_try:
+        try:
+            response = ai_client.models.generate_content(model=m, contents=prompt)
+            return response.text.strip()
+        except Exception as e:
+            print(f"Model {m} encountered error: {e}. Trying fallback if available...")
+    raise RuntimeError("All configured Gemini models failed or were unavailable.")
+
 def fetch_podcast_context() -> str:
     snippets = []
     for pod in DEFAULT_PODCASTS:
@@ -160,8 +173,7 @@ def generate_welcome_and_first_mindsnack(user_prompt: str) -> str:
 
     Keep tone friendly, concise, and do not use bold markdown formatting.
     """
-    response = ai_client.models.generate_content(model="gemini-3.8-flash", contents=prompt)
-    return response.text.strip()
+    return generate_content_with_fallback(prompt)
 
 def generate_reply_conversation(user_message: str, user_prompt: str) -> str:
     prompt = f"""
@@ -171,8 +183,7 @@ def generate_reply_conversation(user_message: str, user_prompt: str) -> str:
     Task:
     Respond thoughtfully to the user's message as Gemini AI. Provide an engaging follow-up insight or health tip based on what they said. Keep it conversational, brief, and supportive. Do not use bold markdown formatting.
     """
-    response = ai_client.models.generate_content(model="gemini-3.8-flash", contents=prompt)
-    return response.text.strip()
+    return generate_content_with_fallback(prompt)
 
 def generate_weekly_mindsnack(user_prompt: str) -> str:
     context = fetch_podcast_context()
@@ -188,8 +199,7 @@ def generate_weekly_mindsnack(user_prompt: str) -> str:
     
     Keep it concise and ready for email. Do not use bold markdown formatting.
     """
-    response = ai_client.models.generate_content(model="gemini-3.8-flash", contents=prompt)
-    return response.text.strip()
+    return generate_content_with_fallback(prompt)
 
 # -------------------------------------------------------------------
 # Main Workflow Execution
