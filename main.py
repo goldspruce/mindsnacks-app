@@ -15,7 +15,7 @@ from google import genai
 #GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS", "rhlee.personal@gmail.com")
 #GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS" or "rhlee.personal@gmail.com").strip()
+GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS", "rhlee.personal@gmail.com").strip()
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
 STATE_FILE = "state.json"
 
