@@ -160,7 +160,7 @@ def generate_welcome_and_first_mindsnack(user_prompt: str) -> str:
 
     Keep tone friendly, concise, and do not use bold markdown formatting.
     """
-    response = ai_client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+    response = ai_client.models.generate_content(model="gemini-3.8-flash", contents=prompt)
     return response.text.strip()
 
 def generate_reply_conversation(user_message: str, user_prompt: str) -> str:
@@ -171,7 +171,7 @@ def generate_reply_conversation(user_message: str, user_prompt: str) -> str:
     Task:
     Respond thoughtfully to the user's message as Gemini AI. Provide an engaging follow-up insight or health tip based on what they said. Keep it conversational, brief, and supportive. Do not use bold markdown formatting.
     """
-    response = ai_client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+    response = ai_client.models.generate_content(model="gemini-3.8-flash", contents=prompt)
     return response.text.strip()
 
 def generate_weekly_mindsnack(user_prompt: str) -> str:
@@ -188,7 +188,7 @@ def generate_weekly_mindsnack(user_prompt: str) -> str:
     
     Keep it concise and ready for email. Do not use bold markdown formatting.
     """
-    response = ai_client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+    response = ai_client.models.generate_content(model="gemini-3.8-flash", contents=prompt)
     return response.text.strip()
 
 # -------------------------------------------------------------------
