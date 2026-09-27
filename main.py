@@ -12,11 +12,9 @@ import pytz
 from google import genai
 
 # Configuration
-#GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS", "rhlee.personal@gmail.com")
-#GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS", "rhlee.personal@gmail.com").strip()
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
+GMAIL_ADDRESS = (os.environ.get("GMAIL_ADDRESS") or "rhlee.personal@gmail.com").strip()
+GMAIL_APP_PASSWORD = (os.environ.get("GMAIL_APP_PASSWORD") or "").strip()
+GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 STATE_FILE = "state.json"
 
 # Default podcasts to pull content from
@@ -56,14 +54,15 @@ def send_email(to_email: str, subject: str, body_text: str):
     msg['Subject'] = subject
     msg.attach(MIMEText(body_text, 'plain'))
 
+    clean_pass = GMAIL_APP_PASSWORD.replace(" ", "")
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+        server.login(GMAIL_ADDRESS, clean_pass)
         server.send_message(msg)
     print(f"Successfully sent email to {to_email}")
 
 def fetch_unread_emails() -> list:
     if not GMAIL_APP_PASSWORD:
-        print("GMAIL_APP_PASSWORD is empty or not set. Skipping inbox fetch.")
+        print("GMAIL_APP_PASSWORD not set. Skipping inbox fetch.")
         return []
 
     messages = []
@@ -71,23 +70,24 @@ def fetch_unread_emails() -> list:
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         clean_user = GMAIL_ADDRESS.strip()
         clean_pass = GMAIL_APP_PASSWORD.replace(" ", "").strip()
-        print(f"Logging into Gmail as {clean_user} (Password length: {len(clean_pass)} chars)...")
+        print(f"Logging into Gmail as {clean_user}...")
         mail.login(clean_user, clean_pass)
-        
-#def fetch_unread_emails() -> list:
-#    if not GMAIL_APP_PASSWORD:
-#        print("GMAIL_APP_PASSWORD not set. Skipping inbox fetch.")
-#        return []
-#
-#    messages = []
-#    try:
-#        mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        print(f"Attempting login for '{GMAIL_ADDRESS}' with password length: {len(GMAIL_APP_PASSWORD or '')}")
-#        mail.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-#        mail.select("inbox")
 
-        status, response = mail.search(None, 'UNSEEN')
+        # Standard IMAP requires uppercase 'INBOX' and checking status
+        select_status, select_data = mail.select("INBOX")
+        if select_status != 'OK':
+            print(f"Failed to select INBOX. Status: {select_status}, Data: {select_data}")
+            mail.logout()
+            return []
+
+        search_status, response = mail.search(None, 'UNSEEN')
+        if search_status != 'OK':
+            print(f"Failed to search INBOX. Status: {search_status}")
+            mail.logout()
+            return []
+
         email_ids = response[0].split()
+        print(f"Found {len(email_ids)} unread email(s).")
 
         for e_id in email_ids:
             _, msg_data = mail.fetch(e_id, '(RFC822)')
@@ -192,16 +192,10 @@ def main():
     unread_emails = fetch_unread_emails()
     for email_msg in unread_emails:
         sender = email_msg["sender"]
-        subject = email_msg["subject"]
         body = email_msg["body"]
 
         # Ignore emails sent by the app itself
         if sender == GMAIL_ADDRESS.lower():
-            continue
-
-        # Filter: Only process emails where the subject line contains "mindsnack" or "mindsnacks" (case-insensitive)
-        if "mindsnack" not in subject.lower():
-            print(f"Skipping email from {sender} — subject '{subject}' does not contain 'mindsnack'")
             continue
 
         if sender not in users:
