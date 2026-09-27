@@ -5,6 +5,12 @@
       "joined_at": "2026-09-27T01:55:04.817517+00:00",
       "last_sent_at": "2026-09-27T01:55:04.817517+00:00",
       "replied_this_month": true
+    },
+    "robert.lee@berkeley.edu": {
+      "raw_prompt": "I want content on: Podcasts Hidden Brain and Solved (Mark Manson) which\r\nboth discuss interesting psychology and neuroscience and contain actionable\r\nself help. Also Perform (Andy Galpin) for workout and wellness.\r\nRemind me to take do an exercise snack or other break",
+      "joined_at": "2026-09-27T02:18:18.213973+00:00",
+      "last_sent_at": "2026-09-27T02:18:18.213973+00:00",
+      "replied_this_month": true
     }
   }
 }
