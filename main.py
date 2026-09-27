@@ -61,8 +61,8 @@ def send_email(to_email: str, subject: str, body_text: str):
         server.send_message(msg)
     print(f"Successfully sent email to {to_email}")
 
-def fetch\_unread\_emails() -&gt; list:
-    if not GMAIL\_APP\_PASSWORD: print("GMAIL_APP_PASSWORD is empty or not set. Skipping inbox fetch.")
+def fetch_unread_emails() -&gt; list:
+    if not GMAIL_APP_PASSWORD: print("GMAIL_APP_PASSWORD is empty or not set. Skipping inbox fetch.")
     return []
 
     messages = []
