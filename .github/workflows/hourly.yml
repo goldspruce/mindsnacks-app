@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -34,7 +36,8 @@ jobs:
           git add state.json
           if ! git diff --staged --quiet; then
             git commit -m "Update state.json [skip ci]"
-            git pull --rebase origin main
+            git fetch origin main
+            git rebase origin/main
             git push
           else
             echo "No changes to state.json to commit."
